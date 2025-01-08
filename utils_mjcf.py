@@ -125,7 +125,8 @@ TEXTURE_FILES = {
 }
 
 TEXTURES = {
-    texture_name: os.path.join("textures", texture_file) for (texture_name, texture_file) in TEXTURE_FILES.items()
+    texture_name: os.path.join("textures", texture_file)
+    for (texture_name, texture_file) in TEXTURE_FILES.items()
 }
 
 ALL_TEXTURES = TEXTURES.keys()
@@ -239,7 +240,11 @@ def new_element(tag, name, **kwargs):
         if v is None:
             kwargs.pop(k)
         else:
-            kwargs[k] = convert_to_string(v)
+            if k == "dclass":  # dealing with the attribute 'class'
+                kwargs["class"] = convert_to_string(kwargs.pop("dclass"))
+            else:
+                kwargs[k] = convert_to_string(v)
+
     element = ET.Element(tag, attrib=kwargs)
     return element
 
@@ -381,18 +386,29 @@ def get_size(size, size_max, size_min, default_max, default_min):
     """
     if len(default_max) != len(default_min):
         raise ValueError(
-            "default_max = {} and default_min = {}".format(str(default_max), str(default_min))
+            "default_max = {} and default_min = {}".format(
+                str(default_max), str(default_min)
+            )
             + " have different lengths"
         )
     if size is not None:
         if (size_max is not None) or (size_min is not None):
-            raise ValueError("size = {} overrides size_max = {}, size_min = {}".format(size, size_max, size_min))
+            raise ValueError(
+                "size = {} overrides size_max = {}, size_min = {}".format(
+                    size, size_max, size_min
+                )
+            )
     else:
         if size_max is None:
             size_max = default_max
         if size_min is None:
             size_min = default_min
-        size = np.array([np.random.uniform(size_min[i], size_max[i]) for i in range(len(default_max))])
+        size = np.array(
+            [
+                np.random.uniform(size_min[i], size_max[i])
+                for i in range(len(default_max))
+            ]
+        )
     return np.array(size)
 
 
@@ -452,12 +468,18 @@ def add_prefix(
     attribs = {attribs} if type(attribs) is str else set(attribs)
 
     # Check the current element for matching conditions
-    if (tags == "default" or root.tag in tags) and (exclude is None or not exclude(root)):
+    if (tags == "default" or root.tag in tags) and (
+        exclude is None or not exclude(root)
+    ):
         for attrib in attribs:
             v = root.get(attrib, None)
             # Only add prefix if the attribute exist, the current attribute doesn't already begin with prefix,
             # and the @exclude filter is either None or returns False
-            if v is not None and not v.startswith(prefix) and (exclude is None or not exclude(v)):
+            if (
+                v is not None
+                and not v.startswith(prefix)
+                and (exclude is None or not exclude(v))
+            ):
                 root.set(attrib, prefix + v)
     # Continue recursively searching through the element tree
     for r in root:
@@ -497,21 +519,36 @@ def add_material(root, naming_prefix="", custom_material=None):
             },
         )
     # Else, check to make sure the custom material begins with the specified prefix and that it's unique
-    if not custom_material.name.startswith(naming_prefix) and not custom_material.shared:
+    if (
+        not custom_material.name.startswith(naming_prefix)
+        and not custom_material.shared
+    ):
         custom_material.name = naming_prefix + custom_material.name
-        custom_material.tex_attrib["name"] = naming_prefix + custom_material.tex_attrib["name"]
-        custom_material.mat_attrib["name"] = naming_prefix + custom_material.mat_attrib["name"]
-        custom_material.mat_attrib["texture"] = naming_prefix + custom_material.mat_attrib["texture"]
+        custom_material.tex_attrib["name"] = (
+            naming_prefix + custom_material.tex_attrib["name"]
+        )
+        custom_material.mat_attrib["name"] = (
+            naming_prefix + custom_material.mat_attrib["name"]
+        )
+        custom_material.mat_attrib["texture"] = (
+            naming_prefix + custom_material.mat_attrib["texture"]
+        )
 
     # Check the current element for matching conditions
-    if root.tag == "geom" and root.get("group", None) == "1" and root.get("material", None) is None:
+    if (
+        root.tag == "geom"
+        and root.get("group", None) == "1"
+        and root.get("material", None) is None
+    ):
         # Add a new material attribute to this geom
         root.set("material", custom_material.name)
         # Set used to True
         used = True
     # Continue recursively searching through the element tree
     for r in root:
-        _, _, _, _used = add_material(root=r, naming_prefix=naming_prefix, custom_material=custom_material)
+        _, _, _, _used = add_material(
+            root=r, naming_prefix=naming_prefix, custom_material=custom_material
+        )
         # Update used
         used = used or _used
     # Lastly, return the new texture and material elements
@@ -533,7 +570,11 @@ def recolor_collision_geoms(root, rgba, exclude=None):
             return True if we should exclude the given element / attribute from having its collision geom impacted.
     """
     # Check this body
-    if root.tag == "geom" and root.get("group") in {None, "0"} and (exclude is None or not exclude(root)):
+    if (
+        root.tag == "geom"
+        and root.get("group") in {None, "0"}
+        and (exclude is None or not exclude(root))
+    ):
         root.set("rgba", array_to_string(rgba))
         root.attrib.pop("material", None)
 
@@ -625,7 +666,10 @@ def sort_elements(root, parent=None, element_filter=None, _elements_dict=None):
     # Loop through all possible subtrees for this XML recurisvely
     for r in root:
         _elements_dict = sort_elements(
-            root=r, parent=root, element_filter=element_filter, _elements_dict=_elements_dict
+            root=r,
+            parent=root,
+            element_filter=element_filter,
+            _elements_dict=_elements_dict,
         )
 
     return _elements_dict
@@ -693,14 +737,20 @@ def find_elements(root, tags, attribs=None, return_first=True):
     # Continue recursively searching through the element tree
     for r in root:
         if return_first:
-            elements = find_elements(tags=tags, attribs=attribs, root=r, return_first=return_first)
+            elements = find_elements(
+                tags=tags, attribs=attribs, root=r, return_first=return_first
+            )
             if elements is not None:
                 return elements
         else:
-            found_elements = find_elements(tags=tags, attribs=attribs, root=r, return_first=return_first)
+            found_elements = find_elements(
+                tags=tags, attribs=attribs, root=r, return_first=return_first
+            )
             pre_elements = deepcopy(elements)
             if found_elements:
-                elements += found_elements if type(found_elements) is list else [found_elements]
+                elements += (
+                    found_elements if type(found_elements) is list else [found_elements]
+                )
 
     return elements if elements else None
 
@@ -751,9 +801,62 @@ def get_ids(sim, elements, element_type="geom", inplace=False):
     elif isinstance(elements, dict):
         # Iterate over each element in dict and recursively repeat
         for name, ele in elements:
-            elements[name] = get_ids(sim=sim, elements=ele, element_type=element_type, inplace=True)
+            elements[name] = get_ids(
+                sim=sim, elements=ele, element_type=element_type, inplace=True
+            )
     else:  # We assume this is an iterable array
         assert isinstance(elements, Iterable), "Elements must be iterable for get_id!"
-        elements = [get_ids(sim=sim, elements=ele, element_type=element_type, inplace=True) for ele in elements]
+        elements = [
+            get_ids(sim=sim, elements=ele, element_type=element_type, inplace=True)
+            for ele in elements
+        ]
 
     return elements
+
+
+def indent(elem, level=0):
+    """Recursively add indentation to an Element"""
+    i = "\n" + level * "  "
+    if len(elem):
+        if not elem.text or not elem.text.strip():
+            elem.text = i + "  "
+        for e in elem:
+            indent(e, level + 1)
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+    else:
+        if level and (not elem.tail or not elem.tail.strip()):
+            elem.tail = i
+
+
+def nested_mjcf_to_single_mjcf(load_path, save_path):
+    """
+    Convert a nested mjcf to a single (self-contained) mjcf.
+    """
+    import mujoco
+
+    model = mujoco.MjModel.from_xml_path(load_path)
+    mujoco.mj_saveLastXML(save_path, model)
+
+
+def find_actuated_joints_name(xml_path):
+    tree = ET.parse(xml_path)
+    root = tree.getroot()
+    actuators = find_elements(root, tags="actuator", return_first=True)
+    actuated_joints_name = []
+    for actuator in actuators:
+        actuated_joints_name.append(actuator.get("joint"))
+    return actuated_joints_name
+
+
+def find_touch_joints_name(xml_path, class_name: str):
+    tree = ET.parse(xml_path)
+    root = tree.getroot()
+    touch_joints = find_elements(
+        root, tags="joint", attribs={"class": class_name}, return_first=False
+    )
+    touch_joints_name = []
+    if touch_joints:
+        for joint in touch_joints:
+            touch_joints_name.append(joint.get("name"))
+    return touch_joints_name

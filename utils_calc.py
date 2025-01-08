@@ -166,21 +166,23 @@ def isometry3dToPosRotVec(T):
 # ---------------------------------------
 def transformPositions(positions, target_frame_pose=None, target_frame_pose_inv=None):
     """
-        input:
-            positions: size of [-1, 3]
-            target_frame_pose: 
-                matrix with size of [4, 4]
-                target_frame_pose in current frame
-            target_frame_pose_inv:
-                current frame pose in target frame
-        output:
-            transformed_pos: size of [-1, 3]
+    input:
+        positions: size of [-1, 3]
+        target_frame_pose:
+            matrix with size of [4, 4]
+            target_frame_pose in current frame
+        target_frame_pose_inv:
+            current frame pose in target frame
+    output:
+        transformed_pos: size of [-1, 3]
     """
 
     if (target_frame_pose is None) and (target_frame_pose_inv is None):
         raise NameError("Both target_frame_pose and target_frame_pose_inv are None !")
     elif (target_frame_pose is not None) and (target_frame_pose_inv is not None):
-        raise NameError("Both target_frame_pose and target_frame_pose_inv are not None !")
+        raise NameError(
+            "Both target_frame_pose and target_frame_pose_inv are not None !"
+        )
 
     positions = np.array(positions)
     original_shape = positions.shape
@@ -199,24 +201,26 @@ def transformPositions(positions, target_frame_pose=None, target_frame_pose_inv=
 # ---------------------------------------
 def transformPoses(poses, target_frame_pose=None, target_frame_pose_inv=None):
     """
-        Args:
-            poses: shape (..., 4, 4) or (4, 4)
-            target_frame_pose: target_frame_pose in current frame, shape (4, 4)
-        Retures:
-            transformed_poses: shape (..., 4, 4) or (4, 4)
+    Args:
+        poses: shape (..., 4, 4) or (4, 4)
+        target_frame_pose: target_frame_pose in current frame, shape (4, 4)
+    Retures:
+        transformed_poses: shape (..., 4, 4) or (4, 4)
     """
     if (target_frame_pose is None) and (target_frame_pose_inv is None):
         raise NameError("Both target_frame_pose and target_frame_pose_inv are None !")
     elif (target_frame_pose is not None) and (target_frame_pose_inv is not None):
-        raise NameError("Both target_frame_pose and target_frame_pose_inv are not None !")
-    
+        raise NameError(
+            "Both target_frame_pose and target_frame_pose_inv are not None !"
+        )
+
     poses = np.array(poses)
     original_shape = poses.shape
     poses = poses.reshape(-1, 4, 4)
 
     if target_frame_pose is not None:
         target_frame_pose_inv = np.linalg.inv(target_frame_pose)
-        
+
     res = np.matmul(np.expand_dims(target_frame_pose_inv, axis=0), poses)
 
     transformed_poses = res.reshape(original_shape)
@@ -224,22 +228,32 @@ def transformPoses(poses, target_frame_pose=None, target_frame_pose_inv=None):
 
 
 # ---------------------------------------
-def transformVelocities(velocities, target_frame_relative_quat=None, target_frame_relative_quat_inv=None):
+def transformVelocities(
+    velocities, target_frame_relative_quat=None, target_frame_relative_quat_inv=None
+):
     """
-        input: 
-            velocities: 
-                shape [-1, 6]
-            target_frame_relative_quat: 
-                target frame's quaternion in current frame [x, y, z, w]
-        output:
-            transformed_velocities: 
-                shape [-1, 6]
+    input:
+        velocities:
+            shape [-1, 6]
+        target_frame_relative_quat:
+            target frame's quaternion in current frame [x, y, z, w]
+    output:
+        transformed_velocities:
+            shape [-1, 6]
     """
 
-    if (target_frame_relative_quat is None) and (target_frame_relative_quat_inv is None):
-        raise NameError("Both target_frame_relative_quat and target_frame_relative_quat_inv are None !")
-    elif (target_frame_relative_quat is not None) and (target_frame_relative_quat_inv is not None):
-        raise NameError("Both target_frame_relative_quat and target_frame_relative_quat_inv are not None !")
+    if (target_frame_relative_quat is None) and (
+        target_frame_relative_quat_inv is None
+    ):
+        raise NameError(
+            "Both target_frame_relative_quat and target_frame_relative_quat_inv are None !"
+        )
+    elif (target_frame_relative_quat is not None) and (
+        target_frame_relative_quat_inv is not None
+    ):
+        raise NameError(
+            "Both target_frame_relative_quat and target_frame_relative_quat_inv are not None !"
+        )
 
     velocities = np.array(velocities)
     original_shape = velocities.shape
@@ -253,14 +267,20 @@ def transformVelocities(velocities, target_frame_relative_quat=None, target_fram
     elif target_frame_relative_quat_inv is not None:
         rot_matrix = sciR.from_quat(target_frame_relative_quat_inv).as_matrix()
 
-    rot_operator = np.block([[rot_matrix, np.zeros((3, 3))], [np.zeros((3, 3)), rot_matrix]])
+    rot_operator = np.block(
+        [[rot_matrix, np.zeros((3, 3))], [np.zeros((3, 3)), rot_matrix]]
+    )
 
     transformed_velocities = (rot_operator @ velocities.T).T
     return transformed_velocities.reshape(original_shape)
 
 
-def transformVectors(vectors, target_frame_relative_quat=None, target_frame_relative_quat_inv=None):
-    return transformVelocities(vectors, target_frame_relative_quat, target_frame_relative_quat_inv)
+def transformVectors(
+    vectors, target_frame_relative_quat=None, target_frame_relative_quat_inv=None
+):
+    return transformVelocities(
+        vectors, target_frame_relative_quat, target_frame_relative_quat_inv
+    )
 
 
 # ---------------------------------------
@@ -270,6 +290,9 @@ def diagRotMat(rot_mat):
 
 # ---------------------------------------
 def batchDiagRotMat(rot_mat):
+    """
+    Does not support non-batch operation.
+    """
     diag_rot_mat = np.zeros((rot_mat.shape[0], 6, 6))
     diag_rot_mat[:, 0:3, 0:3] = rot_mat
     diag_rot_mat[:, 3:6, 3:6] = rot_mat
@@ -293,22 +316,24 @@ def skew(a):
     A[:, 2, 1] = a[:, 0]
     return A
 
+
 def wrenchTransformationMatrix(a):
     """
-        support batch operation
+    support batch operation
     """
     a = np.asarray(a).reshape(-1, 3)
     M = np.tile(np.eye(6), (a.shape[0], 1, 1))
     M[:, 0:3, 3:6] = -skew(a)
     return np.squeeze(M)
 
+
 def jacoDeRotVecToAngularVel(rotvec):
     """
-        Args: 
-            rotation vector
-        Return: 
-            jacobian ( angular_velocity = jacobian @ derivative_rotation_vector )
-        Support batch operation.    
+    Args:
+        rotation vector
+    Return:
+        jacobian ( angular_velocity = jacobian @ derivative_rotation_vector )
+    Support batch operation.
     """
     r = np.asarray(rotvec).reshape(-1, 3, 1)
     r_T = np.transpose(r, [0, 2, 1])
@@ -318,7 +343,9 @@ def jacoDeRotVecToAngularVel(rotvec):
     R_T = np.transpose(R, (0, 2, 1))
     I3 = np.tile(np.eye(3), (n, 1, 1))
 
-    body_jaco = (np.matmul(r, r_T) + np.matmul((R_T - I3), skew(r))) / np.linalg.norm(r, axis=1, keepdims=True) ** 2
+    body_jaco = (np.matmul(r, r_T) + np.matmul((R_T - I3), skew(r))) / np.linalg.norm(
+        r, axis=1, keepdims=True
+    ) ** 2
 
     # avoid dividing by zero
     zero_index = np.where(np.linalg.norm(r.reshape(-1, 3), axis=1) < 1e-8)
@@ -328,10 +355,11 @@ def jacoDeRotVecToAngularVel(rotvec):
 
     return np.squeeze(space_jaco)
 
+
 def quatInv(quat):
     """
-        input:
-            quat: [w, x, y, z]
+    input:
+        quat: [w, x, y, z]
     """
     quat = np.array(quat)
     quat_inv = quat.copy()
@@ -341,11 +369,11 @@ def quatInv(quat):
 
 def partialQuatMultiply(quat):
     """
-        Calculate J(q1) = d(q1 * q2) / dq2
-        Args:
-            q1: [w, x, y, z]
-        Return:
-            The J
+    Calculate J(q1) = d(q1 * q2) / dq2
+    Args:
+        q1: [w, x, y, z]
+    Return:
+        The J
     """
     w, x, y, z = quat
 
@@ -355,43 +383,45 @@ def partialQuatMultiply(quat):
 
 def mappingFromAvelToDquat(quat):
     """
-        Function:
-            calculate M, where dq/dt = M(q) * avel_in_body_frame
-        Input:
-            q: [w, x, y, z]
+    Function:
+        calculate M, where dq/dt = M(q) * avel_in_body_frame
+    Input:
+        q: [w, x, y, z]
     """
     w, x, y, z = quat
 
-    M = 1.0 / 2.0 * np.array([[-x, -y, -z], 
-                               [w, -z, y], 
-                               [z, w, -x], 
-                               [-y, x, w]])
+    M = 1.0 / 2.0 * np.array([[-x, -y, -z], [w, -z, y], [z, w, -x], [-y, x, w]])
     return M
 
 
 def mapping_from_space_avel_to_dquat(quat):
     """
-        Function:
-            calculate M, where dq/dt = M(q) * avel_in_space_frame
-        Input:
-            q: [w, x, y, z]
+    Function:
+        calculate M, where dq/dt = M(q) * avel_in_space_frame
+    Input:
+        q: [w, x, y, z]
     """
-    return mappingFromAvelToDquat(quat) @ sciR.from_quat(quatWXYZ2XYZW(quat)).as_matrix().T
+    return (
+        mappingFromAvelToDquat(quat) @ sciR.from_quat(quatWXYZ2XYZW(quat)).as_matrix().T
+    )
+
 
 def normalize_angle(angle):
     """
-        Return the equivalent angle in (-pi, pi].
+    Return the equivalent angle in (-pi, pi].
     """
     angle = np.rad2deg(angle)
     angle = (angle + 180) % 360 - 180
     return np.deg2rad(angle)
 
+
 # ----------------------------------------------------------------
 
+
 def test_mapping_from_avel_to_dquat():
-    avel = np.array([0.1, -0.1, 0.5]) # avel in world frame
+    avel = np.array([0.1, -0.1, 0.5])  # avel in world frame
     dt = 0.01
-    r1 = sciR.from_euler('xyz', [0.5, 0.6, 0.7])
+    r1 = sciR.from_euler("xyz", [0.5, 0.6, 0.7])
 
     r2 = sciR.from_rotvec(avel * dt) * r1
 
@@ -400,25 +430,18 @@ def test_mapping_from_avel_to_dquat():
 
     d_quat = (r2_quat - r1_quat) / dt  # (x, y, z, w)
 
-    d_quat_estimate = mapping_from_space_avel_to_dquat(quatXYZW2WXYZ(r1_quat)) @ avel.reshape(-1, 1)
+    d_quat_estimate = mapping_from_space_avel_to_dquat(
+        quatXYZW2WXYZ(r1_quat)
+    ) @ avel.reshape(-1, 1)
     d_quat_estimate = quatWXYZ2XYZW(d_quat_estimate)
 
     print("d_quat: ", d_quat)
-    print("d_quat_estimate: ", d_quat_estimate.reshape(-1, ))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    print(
+        "d_quat_estimate: ",
+        d_quat_estimate.reshape(
+            -1,
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------------
