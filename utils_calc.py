@@ -124,7 +124,12 @@ def batchIsometry3dInverse(isometry3d):
 
 # ---------------------------------------
 def posRotMat2Isometry3d(pos, rot_mat):
-    t1 = time.time()
+    isometry3d = np.block([[rot_mat, pos.reshape(3, 1)], [np.zeros((1, 3)), 1]])
+    return isometry3d
+
+# ---------------------------------------
+def posOri2Isometry3d(pos, ori):
+    rot_mat = sciR.as_matrix(ori)
     isometry3d = np.block([[rot_mat, pos.reshape(3, 1)], [np.zeros((1, 3)), 1]])
     return isometry3d
 
@@ -413,6 +418,65 @@ def normalize_angle(angle):
     angle = np.rad2deg(angle)
     angle = (angle + 180) % 360 - 180
     return np.deg2rad(angle)
+
+def jacoLeftBCH(rotvec):
+    """
+    Function:
+        J_l(), which satisfies exp((phi + delta_phi)^) = exp((J_l(phi) @ delta_phi)^) @ exp((phi)^).
+        Reference: visual SLAM 14 lectures (in Chinese), page 82.
+        Support batch operation.
+        Equivalent to jacoDeRotVecToAngularVel()
+    """
+    epsilon = 1e-8  # if the norm of rotvec is less than epsilon, we regard it as a zero rotvec
+
+    r = np.asarray(rotvec).reshape(-1, 3)
+    angle = np.linalg.norm(r, axis=1)
+    zero_index = np.where(angle < epsilon)  # dealing with zero rotvec
+    angle[zero_index] = epsilon
+
+    angle = angle.reshape(-1, 1, 1)
+    axis = r.reshape(-1, 3, 1) / angle
+
+    I3 = np.tile(np.eye(3), (r.shape[0], 1, 1))
+
+    J_l = (
+        np.sin(angle) / angle * I3
+        + (1.0 - np.sin(angle) / angle) * np.matmul(axis, axis.transpose(0, 2, 1))
+        + ((1.0 - np.cos(angle)) / angle) * skew(axis)
+    )
+
+    J_l[zero_index, ...] = np.tile(np.eye(3), (len(zero_index), 1, 1))  # dealing with zero rotvec
+
+    return J_l.squeeze()
+
+
+def jacoLeftBCHInverse(rotvec):
+    """
+    Function:
+        Analytical inverse of jacoLeftBCH().
+        Support batch operation.
+    """
+    epsilon = 1e-8  # if the norm of rotvec is less than epsilon, we regard it as a zero rotvec
+
+    r = np.asarray(rotvec).reshape(-1, 3)
+    angle = np.linalg.norm(r, axis=1)
+    zero_index = np.where(angle < epsilon)  # dealing with zero rotvec
+    angle[zero_index] = epsilon
+
+    angle = angle.reshape(-1, 1, 1)
+    axis = r.reshape(-1, 3, 1) / angle
+
+    I3 = np.tile(np.eye(3), (r.shape[0], 1, 1))
+
+    J_l_inv = (
+        angle / 2.0 * 1.0 / np.tan(angle / 2.0) * I3
+        + (1.0 - angle / 2.0 * 1.0 / np.tan(angle / 2.0)) * np.matmul(axis, axis.transpose(0, 2, 1))
+        - angle / 2.0 * skew(axis)
+    )
+
+    J_l_inv[zero_index, ...] = np.tile(np.eye(3), (len(zero_index), 1, 1))  # dealing with zero rotvec
+
+    return J_l_inv.squeeze()
 
 
 # ----------------------------------------------------------------
