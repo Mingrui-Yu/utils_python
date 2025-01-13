@@ -1,5 +1,6 @@
-import time
 import math
+import time
+
 import numpy as np
 from scipy.spatial.transform import Rotation as sciR
 
@@ -124,8 +125,11 @@ def batchIsometry3dInverse(isometry3d):
 
 # ---------------------------------------
 def posRotMat2Isometry3d(pos, rot_mat):
-    isometry3d = np.block([[rot_mat, pos.reshape(3, 1)], [np.zeros((1, 3)), 1]])
+    isometry3d = np.block(
+        [[rot_mat, np.asarray(pos).reshape(3, 1)], [np.zeros((1, 3)), 1]]
+    )
     return isometry3d
+
 
 # ---------------------------------------
 def posOri2Isometry3d(pos, ori):
@@ -419,6 +423,7 @@ def normalize_angle(angle):
     angle = (angle + 180) % 360 - 180
     return np.deg2rad(angle)
 
+
 def jacoLeftBCH(rotvec):
     """
     Function:
@@ -445,7 +450,9 @@ def jacoLeftBCH(rotvec):
         + ((1.0 - np.cos(angle)) / angle) * skew(axis)
     )
 
-    J_l[zero_index, ...] = np.tile(np.eye(3), (len(zero_index), 1, 1))  # dealing with zero rotvec
+    J_l[zero_index, ...] = np.tile(
+        np.eye(3), (len(zero_index), 1, 1)
+    )  # dealing with zero rotvec
 
     return J_l.squeeze()
 
@@ -470,11 +477,14 @@ def jacoLeftBCHInverse(rotvec):
 
     J_l_inv = (
         angle / 2.0 * 1.0 / np.tan(angle / 2.0) * I3
-        + (1.0 - angle / 2.0 * 1.0 / np.tan(angle / 2.0)) * np.matmul(axis, axis.transpose(0, 2, 1))
+        + (1.0 - angle / 2.0 * 1.0 / np.tan(angle / 2.0))
+        * np.matmul(axis, axis.transpose(0, 2, 1))
         - angle / 2.0 * skew(axis)
     )
 
-    J_l_inv[zero_index, ...] = np.tile(np.eye(3), (len(zero_index), 1, 1))  # dealing with zero rotvec
+    J_l_inv[zero_index, ...] = np.tile(
+        np.eye(3), (len(zero_index), 1, 1)
+    )  # dealing with zero rotvec
 
     return J_l_inv.squeeze()
 
