@@ -1,11 +1,11 @@
 import numpy as np
-from scipy.spatial.transform import Rotation as sciR
-
 import rclpy
+from builtin_interfaces.msg import Time
+from geometry_msgs.msg import Point, Pose, Quaternion, Vector3
 from rclpy.clock import Clock
-from visualization_msgs.msg import Marker, MarkerArray
-from geometry_msgs.msg import Point, Quaternion, Vector3, Pose
+from scipy.spatial.transform import Rotation as sciR
 from std_msgs.msg import ColorRGBA
+from visualization_msgs.msg import Marker, MarkerArray
 
 
 # ------------------------------------
@@ -152,3 +152,17 @@ def pointPairsToLines(points, parent_frame_id, marker_id=0):
         marker.points.append(Point(x=points[i][0], y=points[i][1], z=points[i][2]))
 
     return marker
+
+
+def stamp_to_seconds(input) -> float:
+    return input.sec + input.nanosec / 1e9
+
+
+def time_to_seconds(input) -> float:
+    return input.nanoseconds / 1e9
+
+
+def seconds_to_stamp(seconds_float):
+    sec = int(seconds_float)  # Integer part for seconds
+    nanosec = int((seconds_float - sec) * 1e9)
+    return Time(sec=sec, nanosec=nanosec)

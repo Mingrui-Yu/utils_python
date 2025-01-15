@@ -3,6 +3,7 @@ import numpy as np
 OPERATOR2MANO_RIGHT = np.array([[0, 0, -1], [-1, 0, 0], [0, 1, 0]])
 OPERATOR2MANO_LEFT = np.array([[0, 0, -1], [1, 0, 0], [0, -1, 0]])
 
+# https://ai.google.dev/static/mediapipe/images/solutions/hand-landmarks.png?hl=zh-cn
 MANO_FINGERTIP_INDEX = [4, 8, 12, 16, 20]
 
 MANO_LINE_PAIRS = [
