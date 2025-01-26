@@ -489,6 +489,62 @@ def jacoLeftBCHInverse(rotvec):
     return J_l_inv.squeeze()
 
 
+def depth_image_to_points(depth_image, intrinsic_matrix):
+    height, width = depth_image.shape
+    # Create a meshgrid of pixel coordinates (u, v)
+    u, v = np.meshgrid(np.arange(width), np.arange(height))
+    u = u.flatten()
+    v = v.flatten()
+    Z = depth_image.flatten()
+    # Extract intrinsic matrix components
+    fx = intrinsic_matrix[0, 0]
+    fy = intrinsic_matrix[1, 1]
+    cx = intrinsic_matrix[0, 2]
+    cy = intrinsic_matrix[1, 2]
+    # Backproject pixels to 3D space
+    X = (u - cx) * Z / fx
+    Y = (v - cy) * Z / fy
+    # Stack the 3D points into an (N, 3) array
+    points = np.vstack((X, Y, Z)).T
+    return points
+
+
+def points_from_image_to_cam_frame(img_coord, z, intrinsic_matrix):
+    """
+    Args:
+        img_coord: (u, v)
+        z: depth, unit: m.
+    """
+    return NotImplementedError()
+
+
+def rgbd_to_pointcloud(rgb_image, depth_image, intrinsic_matrix):
+    points = depth_image_to_points(depth_image, intrinsic_matrix)
+    return np.hstack(
+        [
+            points,
+            rgb_image.reshape(-1, 3).astype(points.dtype) / 255.0,  # (0~255) to (0~1)
+        ]
+    )
+
+
+def camera_orientation_opengl_to_common(opengl_quat):
+    """
+    Args:
+        opengl_quat: (w, x, y, z)
+    Return:
+        common_quat: (w, x, y, z)
+    """
+
+    # rotate 180 degree around its x-axis
+    return quatXYZW2WXYZ(
+        (
+            sciR.from_quat(quatWXYZ2XYZW(opengl_quat))
+            * sciR.from_euler("XYZ", [np.pi, 0, 0])
+        ).as_quat()
+    )
+
+
 # ----------------------------------------------------------------
 
 
