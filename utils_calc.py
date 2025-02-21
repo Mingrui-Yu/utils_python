@@ -308,13 +308,14 @@ def batchDiagRotMat(rot_mat):
     return diag_rot_mat
 
 
-# ---------------------------------------
-"""
-    support batch operation
-"""
-
-
 def skew(a):
+    """
+    Support single and batch operation.
+    Args:
+        a: shape (n_batch, 3)
+    Return:
+        A: shape (n_batch, 3, 3)
+    """
     a = a.reshape(-1, 3)
     A = np.zeros((a.shape[0], 3, 3))
     A[:, 0, 1] = -a[:, 2]
@@ -323,7 +324,7 @@ def skew(a):
     A[:, 1, 2] = -a[:, 0]
     A[:, 2, 0] = -a[:, 1]
     A[:, 2, 1] = a[:, 0]
-    return A
+    return A.squeeze()
 
 
 def wrenchTransformationMatrix(a):
