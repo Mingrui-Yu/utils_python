@@ -39,7 +39,7 @@ def git_hash():
 
 
 def git_diff_config(name):
-    cmd = f'git diff --unified=0 {name}'
+    cmd = f"git diff --unified=0 {name}"
     ret = subprocess.check_output(shlex.split(cmd)).strip()
     if isinstance(ret, bytes):
         ret = ret.decode()
@@ -47,30 +47,55 @@ def git_diff_config(name):
 
 
 def set_np_formatting():
-    """ formats numpy print """
-    np.set_printoptions(edgeitems=30, infstr='inf',
-                        linewidth=4000, nanstr='nan', precision=3,
-                        suppress=False, threshold=10000, formatter=None)
+    """formats numpy print"""
+    np.set_printoptions(
+        edgeitems=30,
+        infstr="inf",
+        linewidth=4000,
+        nanstr="nan",
+        precision=3,
+        suppress=False,
+        threshold=10000,
+        formatter=None,
+    )
 
 
-def set_seed(seed):
+def set_seed(seed, torch_deterministic=False, rank=0):
+    """set seed across modules"""
+    if seed == -1 and torch_deterministic:
+        seed = 42 + rank
+    elif seed == -1:
+        seed = np.random.randint(0, 10000)
+    else:
+        seed = seed + rank
+
+    print("Setting seed: {}".format(seed))
+
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.deterministic = True
+    if torch_deterministic:
+        # refer to https://docs.nvidia.com/cuda/cublas/index.html#cublasApi_reproducibility
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
+        torch.use_deterministic_algorithms(True)
+    else:
+        torch.backends.cudnn.benchmark = True
+        torch.backends.cudnn.deterministic = False
 
     return seed
 
 
 class AverageScalarMeter(object):
     """
-        Online calculate the mean of data in a sliding window.
+    Online calculate the mean of data in a sliding window.
     """
+
     def __init__(self, window_size):
         self.window_size = window_size
         self.current_size = 0

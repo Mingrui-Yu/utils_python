@@ -8,7 +8,7 @@ def quaternion_xyzw2wxyz(q):
     Args:
         q: shape (..., 4)
     """
-    return q[:, [3, 0, 1, 2]]
+    return q[..., [3, 0, 1, 2]]
 
 
 def quaternion_wxyz2xyzw(q):
@@ -16,7 +16,7 @@ def quaternion_wxyz2xyzw(q):
     Args:
         q: shape (..., 4)
     """
-    return q[:, [1, 2, 3, 0]]
+    return q[..., [1, 2, 3, 0]]
 
 
 def quaternion_angular_error(q1, q2, epsilon=1e-7):
@@ -33,14 +33,10 @@ def quaternion_angular_error(q1, q2, epsilon=1e-7):
     q2 = q2 / torch.norm(q2, dim=-1, keepdim=True)
 
     # compute the dot product
-    dot_product = (
-        torch.matmul(q1.unsqueeze(-2), q2.unsqueeze(-1)).squeeze(-1).squeeze(-1)
-    )
+    dot_product = torch.matmul(q1.unsqueeze(-2), q2.unsqueeze(-1)).squeeze(-1).squeeze(-1)
 
     # compute the absolute value of the dot product
-    abs_dot_product = torch.clamp(
-        torch.abs(dot_product), min=-1.0 + epsilon, max=1.0 - epsilon
-    )
+    abs_dot_product = torch.clamp(torch.abs(dot_product), min=-1.0 + epsilon, max=1.0 - epsilon)
 
     # compute the error
     error = 2.0 * torch.acos(abs_dot_product)
@@ -55,9 +51,7 @@ def get_random(shape, lower, upper):
     """
     device = upper.device
     assert shape[1] == lower.shape[0] == upper.shape[0]
-    return lower.unsqueeze(0) + torch.rand(shape).float().to(device) * (
-        upper - lower
-    ).unsqueeze(0)
+    return lower.unsqueeze(0) + torch.rand(shape).float().to(device) * (upper - lower).unsqueeze(0)
 
 
 def transform_points(points, frame_pos, frame_quat):

@@ -22,6 +22,9 @@ def twoVecAngle(vec0, vec1):
 
 # ---------------------------------------
 def quatWXYZ2XYZW(quat_wxyz):
+    """
+    Support batch operation.
+    """
     quat_wxyz = np.asarray(quat_wxyz)
     original_shape = quat_wxyz.shape
     quat_wxyz = quat_wxyz.reshape(-1, 4)
@@ -82,13 +85,13 @@ def posQuat2Isometry3d(pos, quat):
 # ---------------------------------------
 # quat: [x, y, z, w]
 def batchPosQuat2Isometry3d(pos, quat):
-    pos = np.asarray(pos).reshape(-1, 3)
-    quat = np.asarray(quat).reshape(-1, 4)
-    rot_mat = sciR.from_quat(quat).as_matrix()
+    _pos = np.asarray(pos).reshape(-1, 3)
+    _quat = np.asarray(quat).reshape(-1, 4)
+    _rot_mat = sciR.from_quat(_quat).as_matrix()
 
-    isometry3d = np.zeros((pos.shape[0], 4, 4))
-    isometry3d[:, 0:3, 3] = pos
-    isometry3d[:, 0:3, 0:3] = rot_mat
+    isometry3d = np.zeros((_pos.shape[0], 4, 4))
+    isometry3d[:, 0:3, 3] = _pos
+    isometry3d[:, 0:3, 0:3] = _rot_mat
     isometry3d[:, 3, 3] = 1
 
     return isometry3d
@@ -109,14 +112,36 @@ def batchPosRotVec2Isometry3d(pos, rotvec):
 
 
 # ---------------------------------------
+def batchPosRotMat2Isometry3d(pos, rot_mat):
+    """
+    Support single and batch operation.
+    Args:
+        pos: (B, 3)
+        rot_mat: (B, 3, 3)
+    """
+    _pos = np.asarray(pos).reshape(-1, 3)
+    _rot_mat = np.asarray(rot_mat).reshape(-1, 3, 3)
+
+    isometry3d = np.zeros((_pos.shape[0], 4, 4))
+    isometry3d[:, 0:3, 3] = _pos
+    isometry3d[:, 0:3, 0:3] = _rot_mat
+    isometry3d[:, 3, 3] = 1
+
+    if len(np.asarray(pos).shape) == 1:
+        isometry3d = isometry3d.squeeze()
+
+    return isometry3d
+
+
+# ---------------------------------------
 def batchIsometry3dInverse(isometry3d):
-    isometry3d = np.asarray(isometry3d).reshape(-1, 4, 4)
-    pos = isometry3d[:, 0:3, 3].reshape(-1, 3, 1)
-    rot_mat = isometry3d[:, 0:3, 0:3]
+    _isometry3d = np.asarray(isometry3d).reshape(-1, 4, 4)
+    pos = _isometry3d[:, 0:3, 3].reshape(-1, 3, 1)
+    rot_mat = _isometry3d[:, 0:3, 0:3]
     rot_mat_inv = np.transpose(rot_mat, [0, 2, 1])
     pos_inv = -np.matmul(rot_mat_inv, pos)
 
-    isometry3d_inv = np.zeros((isometry3d.shape[0], 4, 4))
+    isometry3d_inv = np.zeros((_isometry3d.shape[0], 4, 4))
     isometry3d_inv[:, 0:3, 3] = np.squeeze(pos_inv)
     isometry3d_inv[:, 0:3, 0:3] = rot_mat_inv
     isometry3d_inv[:, 3, 3] = 1
@@ -124,10 +149,22 @@ def batchIsometry3dInverse(isometry3d):
 
 
 # ---------------------------------------
+def batchIsometry3d2PosQuat(isometry3d):
+    _isometry3d = np.asarray(isometry3d).reshape(-1, 4, 4)
+    pos = _isometry3d[:, 0:3, 3].reshape(-1, 3)
+    rot_mat = _isometry3d[:, 0:3, 0:3]
+    quat = sciR.from_matrix(rot_mat).as_quat()
+
+    if len(np.asarray(isometry3d).shape) == 2:
+        pos = pos.squeeze()
+        quat = quat.squeeze()
+
+    return pos, quat
+
+
+# ---------------------------------------
 def posRotMat2Isometry3d(pos, rot_mat):
-    isometry3d = np.block(
-        [[rot_mat, np.asarray(pos).reshape(3, 1)], [np.zeros((1, 3)), 1]]
-    )
+    isometry3d = np.block([[rot_mat, np.asarray(pos).reshape(3, 1)], [np.zeros((1, 3)), 1]])
     return isometry3d
 
 
@@ -189,9 +226,7 @@ def transformPositions(positions, target_frame_pose=None, target_frame_pose_inv=
     if (target_frame_pose is None) and (target_frame_pose_inv is None):
         raise NameError("Both target_frame_pose and target_frame_pose_inv are None !")
     elif (target_frame_pose is not None) and (target_frame_pose_inv is not None):
-        raise NameError(
-            "Both target_frame_pose and target_frame_pose_inv are not None !"
-        )
+        raise NameError("Both target_frame_pose and target_frame_pose_inv are not None !")
 
     positions = np.array(positions)
     original_shape = positions.shape
@@ -219,9 +254,7 @@ def transformPoses(poses, target_frame_pose=None, target_frame_pose_inv=None):
     if (target_frame_pose is None) and (target_frame_pose_inv is None):
         raise NameError("Both target_frame_pose and target_frame_pose_inv are None !")
     elif (target_frame_pose is not None) and (target_frame_pose_inv is not None):
-        raise NameError(
-            "Both target_frame_pose and target_frame_pose_inv are not None !"
-        )
+        raise NameError("Both target_frame_pose and target_frame_pose_inv are not None !")
 
     poses = np.array(poses)
     original_shape = poses.shape
@@ -237,9 +270,7 @@ def transformPoses(poses, target_frame_pose=None, target_frame_pose_inv=None):
 
 
 # ---------------------------------------
-def transformVelocities(
-    velocities, target_frame_relative_quat=None, target_frame_relative_quat_inv=None
-):
+def transformVelocities(velocities, target_frame_relative_quat=None, target_frame_relative_quat_inv=None):
     """
     input:
         velocities:
@@ -251,18 +282,10 @@ def transformVelocities(
             shape [-1, 6]
     """
 
-    if (target_frame_relative_quat is None) and (
-        target_frame_relative_quat_inv is None
-    ):
-        raise NameError(
-            "Both target_frame_relative_quat and target_frame_relative_quat_inv are None !"
-        )
-    elif (target_frame_relative_quat is not None) and (
-        target_frame_relative_quat_inv is not None
-    ):
-        raise NameError(
-            "Both target_frame_relative_quat and target_frame_relative_quat_inv are not None !"
-        )
+    if (target_frame_relative_quat is None) and (target_frame_relative_quat_inv is None):
+        raise NameError("Both target_frame_relative_quat and target_frame_relative_quat_inv are None !")
+    elif (target_frame_relative_quat is not None) and (target_frame_relative_quat_inv is not None):
+        raise NameError("Both target_frame_relative_quat and target_frame_relative_quat_inv are not None !")
 
     velocities = np.array(velocities)
     original_shape = velocities.shape
@@ -276,20 +299,14 @@ def transformVelocities(
     elif target_frame_relative_quat_inv is not None:
         rot_matrix = sciR.from_quat(target_frame_relative_quat_inv).as_matrix()
 
-    rot_operator = np.block(
-        [[rot_matrix, np.zeros((3, 3))], [np.zeros((3, 3)), rot_matrix]]
-    )
+    rot_operator = np.block([[rot_matrix, np.zeros((3, 3))], [np.zeros((3, 3)), rot_matrix]])
 
     transformed_velocities = (rot_operator @ velocities.T).T
     return transformed_velocities.reshape(original_shape)
 
 
-def transformVectors(
-    vectors, target_frame_relative_quat=None, target_frame_relative_quat_inv=None
-):
-    return transformVelocities(
-        vectors, target_frame_relative_quat, target_frame_relative_quat_inv
-    )
+def transformVectors(vectors, target_frame_relative_quat=None, target_frame_relative_quat_inv=None):
+    return transformVelocities(vectors, target_frame_relative_quat, target_frame_relative_quat_inv)
 
 
 # ---------------------------------------
@@ -353,9 +370,7 @@ def jacoDeRotVecToAngularVel(rotvec):
     R_T = np.transpose(R, (0, 2, 1))
     I3 = np.tile(np.eye(3), (n, 1, 1))
 
-    body_jaco = (np.matmul(r, r_T) + np.matmul((R_T - I3), skew(r))) / np.linalg.norm(
-        r, axis=1, keepdims=True
-    ) ** 2
+    body_jaco = (np.matmul(r, r_T) + np.matmul((R_T - I3), skew(r))) / np.linalg.norm(r, axis=1, keepdims=True) ** 2
 
     # avoid dividing by zero
     zero_index = np.where(np.linalg.norm(r.reshape(-1, 3), axis=1) < 1e-8)
@@ -411,9 +426,7 @@ def mapping_from_space_avel_to_dquat(quat):
     Input:
         q: [w, x, y, z]
     """
-    return (
-        mappingFromAvelToDquat(quat) @ sciR.from_quat(quatWXYZ2XYZW(quat)).as_matrix().T
-    )
+    return mappingFromAvelToDquat(quat) @ sciR.from_quat(quatWXYZ2XYZW(quat)).as_matrix().T
 
 
 def normalize_angle(angle):
@@ -451,9 +464,7 @@ def jacoLeftBCH(rotvec):
         + ((1.0 - np.cos(angle)) / angle) * skew(axis)
     )
 
-    J_l[zero_index, ...] = np.tile(
-        np.eye(3), (len(zero_index), 1, 1)
-    )  # dealing with zero rotvec
+    J_l[zero_index, ...] = np.tile(np.eye(3), (len(zero_index), 1, 1))  # dealing with zero rotvec
 
     return J_l.squeeze()
 
@@ -478,14 +489,11 @@ def jacoLeftBCHInverse(rotvec):
 
     J_l_inv = (
         angle / 2.0 * 1.0 / np.tan(angle / 2.0) * I3
-        + (1.0 - angle / 2.0 * 1.0 / np.tan(angle / 2.0))
-        * np.matmul(axis, axis.transpose(0, 2, 1))
+        + (1.0 - angle / 2.0 * 1.0 / np.tan(angle / 2.0)) * np.matmul(axis, axis.transpose(0, 2, 1))
         - angle / 2.0 * skew(axis)
     )
 
-    J_l_inv[zero_index, ...] = np.tile(
-        np.eye(3), (len(zero_index), 1, 1)
-    )  # dealing with zero rotvec
+    J_l_inv[zero_index, ...] = np.tile(np.eye(3), (len(zero_index), 1, 1))  # dealing with zero rotvec
 
     return J_l_inv.squeeze()
 
@@ -538,12 +546,7 @@ def camera_orientation_opengl_to_common(opengl_quat):
     """
 
     # rotate 180 degree around its x-axis
-    return quatXYZW2WXYZ(
-        (
-            sciR.from_quat(quatWXYZ2XYZW(opengl_quat))
-            * sciR.from_euler("XYZ", [np.pi, 0, 0])
-        ).as_quat()
-    )
+    return quatXYZW2WXYZ((sciR.from_quat(quatWXYZ2XYZW(opengl_quat)) * sciR.from_euler("XYZ", [np.pi, 0, 0])).as_quat())
 
 
 # ----------------------------------------------------------------
@@ -561,9 +564,7 @@ def test_mapping_from_avel_to_dquat():
 
     d_quat = (r2_quat - r1_quat) / dt  # (x, y, z, w)
 
-    d_quat_estimate = mapping_from_space_avel_to_dquat(
-        quatXYZW2WXYZ(r1_quat)
-    ) @ avel.reshape(-1, 1)
+    d_quat_estimate = mapping_from_space_avel_to_dquat(quatXYZW2WXYZ(r1_quat)) @ avel.reshape(-1, 1)
     d_quat_estimate = quatWXYZ2XYZW(d_quat_estimate)
 
     print("d_quat: ", d_quat)
