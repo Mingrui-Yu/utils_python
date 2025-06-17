@@ -1,7 +1,5 @@
 import time
-
 import numpy as np
-import open3d as o3d
 import trimesh
 
 
@@ -27,14 +25,9 @@ def sample_points_normals_from_mesh(
     elif normal_method == "interpolation":
         # reference: https://github.com/mikedh/trimesh/issues/1285#issuecomment-880986179
         # a little faster , and probably more smooth
-        bary = trimesh.triangles.points_to_barycentric(
-            triangles=mesh.triangles[face_index], points=points
-        )
+        bary = trimesh.triangles.points_to_barycentric(triangles=mesh.triangles[face_index], points=points)
         normals = trimesh.unitize(
-            (
-                mesh.vertex_normals[mesh.faces[face_index]]
-                * trimesh.unitize(bary).reshape((-1, 3, 1))
-            ).sum(axis=1)
+            (mesh.vertex_normals[mesh.faces[face_index]] * trimesh.unitize(bary).reshape((-1, 3, 1))).sum(axis=1)
         )
 
     assert points.shape[0] == n_points
@@ -58,14 +51,9 @@ def test_different_normal_method():
         print(f"Normal method 1 time cost: {time.perf_counter() - t1}")
 
         t1 = time.perf_counter()
-        bary = trimesh.triangles.points_to_barycentric(
-            triangles=mesh.triangles[face_index], points=points
-        )
+        bary = trimesh.triangles.points_to_barycentric(triangles=mesh.triangles[face_index], points=points)
         normals_2 = trimesh.unitize(
-            (
-                mesh.vertex_normals[mesh.faces[face_index]]
-                * trimesh.unitize(bary).reshape((-1, 3, 1))
-            ).sum(axis=1)
+            (mesh.vertex_normals[mesh.faces[face_index]] * trimesh.unitize(bary).reshape((-1, 3, 1))).sum(axis=1)
         )
         print(f"Normal method 2 time cost: {time.perf_counter() - t1}")
 

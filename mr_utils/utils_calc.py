@@ -25,24 +25,19 @@ def quatWXYZ2XYZW(quat_wxyz):
     """
     Support batch operation.
     """
-    quat_wxyz = np.asarray(quat_wxyz)
-    original_shape = quat_wxyz.shape
-    quat_wxyz = quat_wxyz.reshape(-1, 4)
-
-    quat_xyzw = quat_wxyz[:, [1, 2, 3, 0]]
-
-    return quat_xyzw.reshape(original_shape)
+    _quat_wxyz = np.expand_dims(np.asarray(quat_wxyz), axis=0)
+    _quat_xyzw = _quat_wxyz[..., [1, 2, 3, 0]]
+    return _quat_xyzw[0]
 
 
 # ---------------------------------------
 def quatXYZW2WXYZ(quat_xyzw):
-    quat_xyzw = np.array(quat_xyzw)
-    original_shape = quat_xyzw.shape
-    quat_xyzw = quat_xyzw.reshape(-1, 4)
-
-    quat_wxyz = quat_xyzw[:, [3, 0, 1, 2]]
-
-    return quat_wxyz.reshape(original_shape)
+    """
+    Support batch operation.
+    """
+    _quat_xyzw = np.expand_dims(np.asarray(quat_xyzw), axis=0)
+    _quat_wxyz = _quat_xyzw[..., [3, 0, 1, 2]]
+    return _quat_wxyz[0]
 
 
 def quaternion_to_rotation_matrix(q):
@@ -578,4 +573,6 @@ def test_mapping_from_avel_to_dquat():
 
 # ---------------------------------------------------------------------------------
 if __name__ == "__main__":
-    test_mapping_from_avel_to_dquat()
+    # test_mapping_from_avel_to_dquat()
+
+    print(quatWXYZ2XYZW(np.random.rand(2, 2, 5, 4)).shape)
