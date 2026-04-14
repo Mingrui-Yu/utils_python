@@ -74,7 +74,7 @@ class PytorchKinematicsHelper:
             return {name: self.tf_base_to_world(tf).get_matrix() for name, tf in transforms.items()}
 
     def create_serial_chain(self, ee_name):
-        self.serial_chains[ee_name] = pk.SerialChain(self.chain, ee_name).to(device=self.device, dtype=torch.float64)
+        self.serial_chains[ee_name] = pk.SerialChain(self.chain, ee_name, dtype=self.chain.dtype, device=self.device).to(device=self.device, dtype=torch.float64)
         return self.serial_chains[ee_name]
 
     def create_ik_solver(
