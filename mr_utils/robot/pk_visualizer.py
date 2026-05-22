@@ -69,9 +69,10 @@ class Visualizer:
             mesh_pose_in_link = posQuat2Isometry3d(xyz, quat)
             vertices = transformPositions(vertices, target_frame_pose_inv=mesh_pose_in_link)
             vertices = torch.tensor(vertices, dtype=torch.float, device=device)
-            faces = torch.tensor(link_mesh.faces, dtype=torch.long, device=device)
+            faces_np = np.asarray(link_mesh.faces, dtype=np.int64)
+            faces = torch.tensor(faces_np, dtype=torch.long, device=device)
 
-            self.robot_mesh[link_name] = {"vertices": vertices, "faces": faces}
+            self.robot_mesh[link_name] = {"vertices": vertices, "faces": faces, "faces_cpu": faces_np}
 
         self.hand_doa_pose = None
         self.global_translation = None
@@ -106,24 +107,50 @@ class Visualizer:
 
         self.current_status = self.chain.forward_kinematics(chain_qpos)
 
-    def get_robot_trimesh_data(self, i, color=None):
+    def get_robot_trimesh_data(self, i, color=None, include_link_prefixes=None, include_link_names=None):
         """
         Get full mesh
+
+        Args:
+            i: Batch index of the current robot pose to convert.
+            color: Optional RGBA face color passed to ``trimesh.Trimesh``.
+            include_link_prefixes: Optional tuple/list of link-name prefixes to
+                export. When provided, links whose names do not start with one
+                of these prefixes are skipped before mesh construction.
+            include_link_names: Optional tuple/list/set of exact link names to
+                export. When provided, links outside this set are skipped after
+                prefix filtering.
 
         Returns
         -------
         data: trimesh.Trimesh
         """
-        data = tm.Trimesh()
+        if include_link_prefixes is not None:
+            include_link_prefixes = tuple(include_link_prefixes)
+        if include_link_names is not None:
+            include_link_names = set(include_link_names)
+
+        link_meshes = []
         for link_name in self.robot_mesh:
-            v = self.current_status[link_name].transform_points(self.robot_mesh[link_name]["vertices"])
+            if include_link_prefixes is not None and not link_name.startswith(include_link_prefixes):
+                continue
+            if include_link_names is not None and link_name not in include_link_names:
+                continue
+            mesh_data = self.robot_mesh[link_name]
+            v = self.current_status[link_name].transform_points(mesh_data["vertices"])
             if len(v.shape) == 3:
                 v = v[i]
             v = v @ self.global_rotation[i].T + self.global_translation[i]
-            v = v.detach().cpu()
-            f = self.robot_mesh[link_name]["faces"].detach().cpu()
-            data += tm.Trimesh(vertices=v, faces=f, face_colors=color)
-        return data
+            v_np = np.ascontiguousarray(v.detach().cpu().numpy())
+            f_np = np.ascontiguousarray(mesh_data["faces_cpu"])
+            link_meshes.append(tm.Trimesh(vertices=v_np, faces=f_np, face_colors=color, process=False))
+
+        if not link_meshes:
+            return tm.Trimesh()
+
+        # ``trimesh.util.concatenate`` handles face-index offsets robustly,
+        # while avoiding the expensive incremental ``data += link_mesh`` path.
+        return tm.util.concatenate(link_meshes)
 
 
 if __name__ == "__main__":
